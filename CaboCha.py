@@ -115,9 +115,11 @@ class CaboCha:
                     count = 1   
                     while True:
                         check_idx = dep_main_midx + count
-                        if check_idx == len(morphs):
+                        if check_idx == len(dep_morphs):
                             break
-                        elif dep_morphs[check_idx]["pos"].startswith("名詞") or dep_morphs[check_idx]["pos"].startswith("動詞"):
+                        elif dep_morphs[check_idx]["pos"].startswith("動詞"):
+                            # 主辞のあとに同士がある場合は主辞を表層形へ
+                            temp_morphs[-1] = dep_morphs[dep_main_midx]["surface"]
                             temp_morphs.append(dep_morphs[check_idx]["base"])
                         else:
                             break
