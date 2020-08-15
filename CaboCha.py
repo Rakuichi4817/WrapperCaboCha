@@ -1,16 +1,24 @@
 import subprocess
 
+
 class CaboCha:
-    def __init__(self, exe="cabocha", encoding = "utf8"):
+    def __init__(self, exe="cabocha", encoding="utf8", user_dic=None):
         """
         コンストラクタ
         @ subproc: 実行してるプロセスとは違う新しいプロセスを開始する
         @ exe: Cabocha実行開始位置
         @ encoding: エンコーディングの指定
+        @ user_dic: ユーザ辞書指定用
         """
-        self.proc = subprocess.Popen([exe,'-f1'],shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        if user_dic is not None:
+            comm = [exe, "-u {}".format(user_dic), "-f1"]
+        else:
+            comm = [exe, '-f1']
+            
+        self.proc = subprocess.Popen(
+            comm, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         self.encoding = encoding
-    
+
     def tree2string(self, sentence):
         """
         解析の実行結果を標準出力のまま受け取るメソッド
@@ -25,9 +33,9 @@ class CaboCha:
             cabocha_out.append(line)
             if line.startswith("EOS"):
                 break
-                
+
         return "".join(cabocha_out)
-    
+
     def tree2list(self, sentence):
         """
         解析の結果をリスト化して返す。
@@ -35,9 +43,10 @@ class CaboCha:
         """
         cabocha_out = self.tree2string(sentence)
         # 文節ごとにリストで持つ
-        phrases = [line.rstrip("\r\n") for line in cabocha_out.rstrip("\r\nEOS").split("* ") if line != ""]
-        result = [] # 結果
-        
+        phrases = [line.rstrip("\r\n") for line in cabocha_out.rstrip(
+            "\r\nEOS").split("* ") if line != ""]
+        result = []  # 結果
+
         # 各文節ごとに処理
         for phrase in phrases:
             phrase_data = phrase.split("\r\n")
@@ -46,7 +55,7 @@ class CaboCha:
             idx = int(add_data[0])
             ahead_pidx = int(add_data[1].replace("D", ""))
             main_midx = int(add_data[2].split("/")[0])
-            
+
             # 文節内の形態素情報リスト
             morph_texts = phrase_data[1:]
             morphs = []
@@ -64,13 +73,13 @@ class CaboCha:
                 morphs.append(morph_dict)
 
             add_dict = {
-                "ahead_pidx" : ahead_pidx,
-                "main_midx" : main_midx,
-                "morphs" : morphs
+                "ahead_pidx": ahead_pidx,
+                "main_midx": main_midx,
+                "morphs": morphs
             }
             result.append(add_dict)
         return result
-    
+
     def get_bf_morph_pairs(self, sentence):
         '''
         係り受け関係にある文節より基本形にした形態素ペアをリストで取得
@@ -90,13 +99,15 @@ class CaboCha:
 
                 # 係り元の主辞が名詞であれば連続する名詞を原型にして取得
                 if morphs[main_midx]["pos"] == "名詞" and not morphs[main_midx]["pos1"].startswith("形容動詞"):
-                    morph_out = "".join([morph["surface"] for morph in morphs if morph["pos"] == "名詞"])
+                    morph_out = "".join([morph["surface"]
+                                         for morph in morphs if morph["pos"] == "名詞"])
                 else:
                     morph_out = morphs[main_midx]["base"]
 
                 # 係り先の主辞が名詞であれば連続する名詞を原型にして取得
                 if dep_morphs[dep_main_midx]["pos"] == "名詞" and not dep_morphs[dep_main_midx]["pos1"].startswith("形容動詞"):
-                    dep_morph_out = "".join([dep_morph["surface"] for dep_morph in dep_morphs if dep_morph["pos"] == "名詞"])
+                    dep_morph_out = "".join(
+                        [dep_morph["surface"] for dep_morph in dep_morphs if dep_morph["pos"] == "名詞"])
                 # 係り先が動詞の場合は前後を見る
                 elif dep_morphs[dep_main_midx]["pos"].startswith("動詞"):
                     # 主辞の前を見ていく
@@ -107,12 +118,13 @@ class CaboCha:
                         if check_idx < 0:
                             break
                         elif dep_morphs[check_idx]["pos"].startswith("名詞") or dep_morphs[check_idx]["pos"].startswith("動詞"):
-                            temp_morphs.insert(0, dep_morphs[check_idx]["base"])
+                            temp_morphs.insert(
+                                0, dep_morphs[check_idx]["base"])
                         else:
                             break
                         count += 1
-                    
-                    count = 1   
+
+                    count = 1
                     while True:
                         check_idx = dep_main_midx + count
                         if check_idx == len(dep_morphs):
